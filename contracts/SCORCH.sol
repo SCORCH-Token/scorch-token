@@ -110,6 +110,7 @@ contract SCORCH is ERC20, AccessControl, Pausable {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "SCORCH: must have admin role to unpause");
     _unpause();
     }
+
     function addMinter(address account) public virtual {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
