@@ -3,13 +3,11 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./SafeMath.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
+contract SCORCH is ERC20, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    using SafeMath for uint256;
 
     uint256 public constant MAX_SUPPLY = 15_000_000_000 * (10 ** 18); // 15 billion tokens
     uint256 public constant BURN_TAX_NUMERATOR = 1; // Represents 1%
@@ -45,7 +43,7 @@ contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
      * Emits a {Transfer} event with `from` set to the zero address.
      * This function facilitates the gradual minting approach.
      */
-    function mint(address to, uint256 amount) public virtual {
+    function mint(address to, uint256 amount) public virtual whenNotPaused {
         require(
             hasRole(MINTER_ROLE, _msgSender()),
             "SCORCH: Caller is not a minter"
@@ -70,7 +68,7 @@ contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
         address from,
         address to,
         uint256 value
-    ) internal virtual override {
+    ) internal virtual override whenNotPaused {
         // Exclude minting and burning from tax
         if (from == address(0) || to == address(0)) {
             super._update(from, to, value);
@@ -80,13 +78,13 @@ contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
         uint256 taxAmount = 0;
         if (value > 0) {
             // Calculate tax as 1% of the transfer amount
-            taxAmount = value.mul(BURN_TAX_NUMERATOR).div(BURN_TAX_DENOMINATOR);
+            taxAmount = (value * BURN_TAX_NUMERATOR) / BURN_TAX_DENOMINATOR;
         }
 
         if (taxAmount > 0) {
             // Ensure the sender has enough balance for the transfer amount plus the tax
             require(
-                balanceOf(from) >= value.add(taxAmount),
+                 balanceOf(from) >= value + taxAmount,
                 "SCORCH: Balance too low for transfer and tax"
             );
 
@@ -103,6 +101,15 @@ contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
         }
     }
 
+     function pause() public {
+    require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "SCORCH: must have admin role to pause");
+    _pause();
+    }
+
+    function unpause() public {
+    require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "SCORCH: must have admin role to unpause");
+    _unpause();
+    }
     function addMinter(address account) public virtual {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
@@ -122,4 +129,5 @@ contract SCORCH is ERC20, ReentrancyGuard, AccessControl {
     function isMinter(address account) public view returns (bool) {
         return hasRole(MINTER_ROLE, account);
     }
+
 }
