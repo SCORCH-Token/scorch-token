@@ -151,8 +151,7 @@ describe("SCORCH Token", function () {
 
       // Calculate expected values
       const expectedTaxAmount = (transferAmount * BigInt(1)) / BigInt(100); // 1% of transfer amount
-      const expectedSenderFinal = mintAmount - transferAmount - expectedTaxAmount;
-      const expectedRecipientFinal = transferAmount;
+
 
       // Check states before transfer
       const initialSupply = await token.totalSupply();
